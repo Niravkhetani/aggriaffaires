@@ -37,7 +37,7 @@ class ListingSpider(scrapy.Spider):
                 for i,j in zip(list_cat,category3):
                     if j == "Farm Tractor":
                         category_temp = {
-                        'cat_name': cat_name3,
+                        'cat_name': j,
                         }
                         url1 = "https://www.agriaffaires.us" + i
                         yield scrapy.Request(url1, self.CrawlerReuest, headers=header1,meta={'cat':category_temp})

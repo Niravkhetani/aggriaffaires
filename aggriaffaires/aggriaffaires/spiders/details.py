@@ -46,7 +46,7 @@ class DetailSpider(scrapy.Spider):
             buying_format = []
 
 
-            table = pd.read_csv("aggriaffaires/spiders/listing.csv")
+            table = pd.read_csv("aggriaffaires/spiders/NewListing.csv")
             titles = list(table['title'])
             listing_urls = list(table['item_url'])
             thumb_urls = list(table['thumbnail_url'])
@@ -111,10 +111,10 @@ class DetailSpider(scrapy.Spider):
 
         item['item_url'] = response.url
 
-        if response.meta['thumb_urls']:
+        if response.meta['thumb_urls'] != 'nan':
             item['thumbnail_url'] = response.meta['thumb_urls']
         else:
-            item['thumbnail_url'] = ''
+            item['thumbnail_url'] = response.xpath("//div[@class='slider--no txtcenter']/img/@src").get()
 
         data = ast.literal_eval(response.meta['categories'])
         if categories:
@@ -137,17 +137,10 @@ class DetailSpider(scrapy.Spider):
 
         item['img_url'] = response.xpath("//div[@class='slider--no txtcenter']/img/@src").getall()
 
-        item['source_item_id'] = ''
-
-
-        lista = []
-        for i in response.xpath('//*[@id="viTabs_0_is"]/div/table//text()').extract():
-            if i.strip():
-                lista.append(i.strip())
         data = response.xpath("//table[@class='table--specs']//tr")
         data_dict = {}
-        category1 = data.xpath("td/text()").getall()
-        category2 = data.xpath("td[2]//text()").getall()
+        category1 = data.xpath("td/text()[1]").getall()
+        category2 = data.xpath("td[2]//text()[1]").getall()
         cat1 = []
         cat2 = []
         for i in category1:
@@ -172,12 +165,14 @@ class DetailSpider(scrapy.Spider):
             item['location'] = item['vendor_location'] = ''
         try:
             price = data_dict['Price excl. taxes ']
-            if price:
-                item['price'] = int(price)
-                item['currency'] = 'USD'
-            else:
+            regex = re.compile(r'call for price')
+            if regex.search(price):
                 item['currency'] = ''
                 item['price'] = ''
+            else:
+                price = re.sub(r',', '', price)
+                item['price'] = int(price)
+                item['currency'] = 'USD'
         except:
             item['currency'] = item['price'] = ''
 
@@ -190,23 +185,22 @@ class DetailSpider(scrapy.Spider):
         except:
             item['make'] = ''
         try:
-            item['year'] = data_dict['Year ']
+            year = int(data_dict['Year '])
+            if year >= 1900 and year<=2021:
+                item['year'] = year
+            else:
+                item['year'] = ''
         except:
             item['year'] = ''
-
+        auction_end = response.xpath("//div[@class='item-fluid']//time[2]/text()").get('')
+        if auction_end:
+            item['auction_ending'] = auction_end
         item['vendor_contact'] = ''
         item['details'] = ''
-        # item['extra_fields'] = ''
-        item['price_original'] = item['price']
+        # item['source_item_id'] = 'ironlist' + '400514' + response.meta['collection_item_key']
         # foo_store.delete(response.meta['collection_item_key'])
         yield item
 
-    # def get_images(self, response):
-    #     gallery = []
-    #     images = response.xpath('//*[@id="vi_main_img_fs"]/ul/li//img/@src').extract()
-    #     for i in images:
-    #         gallery.append(i)
-    #     return gallery
 
 
 
